@@ -1,5 +1,5 @@
-// Reactの useState フックをインポート（状態管理に使用）
-import { useState } from 'react'
+// Reactの useState, useEffect フックをインポート（状態管理と副作用に使用）
+import { useState, useEffect } from 'react'
 // Material-UI コンポーネントをインポート
 import { 
   Container, // コンテンツを中央に配置するコンテナ
@@ -20,10 +20,32 @@ import './App.css'
 
 // メインのAppコンポーネント
 function App() {
-  // テキスト状態の初期値を '漢字' に設定
-  const [text, setText] = useState('漢字');
+  // URLパラメータから「text」を取得し、なければデフォルト値「漢字」を設定
+  const getInitialText = () => {
+    const params = new URLSearchParams(window.location.search);
+    const textParam = params.get('text');
+    return textParam || '漢字';
+  };
+
+  // テキスト状態の初期値をURLパラメータから取得
+  const [text, setText] = useState(getInitialText);
   // フォントサイズ状態の初期値を 200px に設定
   const [fontSize, setFontSize] = useState(200);
+  
+  // URLが変更された時にテキストを更新するための副作用
+  useEffect(() => {
+    const handleUrlChange = () => {
+      setText(getInitialText());
+    };
+    
+    // URLのpopstate（ブラウザの戻る/進むボタン）イベントでURLパラメータを再取得
+    window.addEventListener('popstate', handleUrlChange);
+    
+    // コンポーネントのアンマウント時にイベントリスナーをクリーンアップ
+    return () => {
+      window.removeEventListener('popstate', handleUrlChange);
+    };
+  }, []);
   
   // システムのダークモード設定を検出するフック
   const prefersDarkMode = useMediaQuery('(prefers-color-scheme: dark)');
@@ -58,6 +80,11 @@ function App() {
   // テキスト入力変更ハンドラ
   const handleTextChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     setText(event.target.value); // 入力値で状態を更新
+    
+    // URLパラメータも更新（ブラウザ履歴に追加せずURL更新）
+    const url = new URL(window.location.href);
+    url.searchParams.set('text', event.target.value);
+    window.history.replaceState({}, '', url);
   };
 
   // フォントサイズ変更ハンドラ
